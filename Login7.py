@@ -12,13 +12,15 @@ cookies = []
 captcha_answer = None
 tglLahir = None
 final_url = None
+DATABASE = 'data_pribadi.db'
+TGL_OUTPUT = 'tanggal_output.txt'
 
 def create_database():
     """
     Membuat atau memastikan tabel database SQLite tersedia (data_pribadi dan failedlogin).
     Menambahkan kolom tgl_scrape.
     """
-    connection = sqlite3.connect('data_pribadi.db')
+    connection = sqlite3.connect(DATABASE)
     cursor = connection.cursor()
 
     cursor.execute('''
@@ -69,7 +71,7 @@ def execute_query(query, data=None):
     Eksekusi query SQLite dengan data yang diberikan.
     """
     try:
-        connection = sqlite3.connect('data_pribadi.db')
+        connection = sqlite3.connect(DATABASE)
         cursor = connection.cursor()
         if data:
             cursor.execute(query, data)
@@ -134,7 +136,7 @@ def storeCookies():
     except requests.exceptions.RequestException as e:
         print(f"An error occurred: {e}")
 
-def generate_date_range(min_date_str, max_date_str, filename="output_dates.txt"):
+def generate_date_range(min_date_str, max_date_str, filename=TGL_OUTPUT):
     """
     Menghasilkan rentang tanggal dan menyimpannya ke file TXT.
 
@@ -343,7 +345,7 @@ def is_nim_exist(nim):
     Memeriksa apakah NIM sudah ada di database.
     """
     try:
-        connection = sqlite3.connect('data_pribadi.db')
+        connection = sqlite3.connect(DATABASE)
         cursor = connection.cursor()
 
         cursor.execute("SELECT 1 FROM data_pribadi WHERE nim = ?", (nim,))
@@ -441,30 +443,86 @@ def fetch_and_parse(href, user_id, data_dashboard):
         data_pribadi.update(data_dashboard)
 
         if is_nim_exist(data_pribadi['nim']):
-            print(f"NIM {data_pribadi['nim']} sudah ada di database. Data tidak disimpan.")
-            return
+            print(f"NIM {data_pribadi['nim']} sudah ada di database. Data akan diupdate.")
+            # Update data di database
+            query = '''
+                UPDATE data_pribadi 
+                SET nama = :nama, 
+                    tempat_lahir = :tempat_lahir, 
+                    tanggal_lahir = :tanggal_lahir, 
+                    alamat = :alamat, 
+                    kelurahan = :kelurahan, 
+                    kecamatan = :kecamatan, 
+                    kota = :kota, 
+                    kode_pos = :kode_pos, 
+                    telepon = :telepon, 
+                    email = :email, 
+                    jenis_kelamin = :jenis_kelamin, 
+                    agama = :agama, 
+                    program_studi = :program_studi, 
+                    tahun_masuk = :tahun_masuk, 
+                    pilihan_waktu = :pilihan_waktu, 
+                    lokasi_cabang = :lokasi_cabang, 
+                    kelas = :kelas, 
+                    lokal = :lokal, 
+                    semester_aktif = :semester_aktif, 
+                    kondisi_aktif = :kondisi_aktif, 
+                    kondisi_biaya_kuliah = :kondisi_biaya_kuliah, 
+                    data = :data, 
+                    tgl_scrape = :tgl_scrape 
+                WHERE nim = :nim
+            '''
+            # Konversi data_dashboard (yang sekarang sudah termasuk data_pribadi) menjadi JSON string
+            data_json = json.dumps(data_dashboard, ensure_ascii=False)
+            data_pribadi['data'] = data_json
 
-        # Konversi data_dashboard (yang sekarang sudah termasuk data_pribadi) menjadi JSON string
-        data_json = json.dumps(data_dashboard, ensure_ascii=False)
-        data_pribadi['data'] = data_json
+            # Tambahkan tanggal scrape
+            data_pribadi['tgl_scrape'] = datetime.now()
 
-        # Tambahkan tanggal scrape
-        data_pribadi['tgl_scrape'] = datetime.now()
+            execute_query(query, data_pribadi)
+            print(f"Data untuk NIM {data_pribadi['nim']} berhasil diupdate.")
+        else:
+            # Sisipkan data baru ke database
+            # Konversi data_dashboard (yang sekarang sudah termasuk data_pribadi) menjadi JSON string
+            data_json = json.dumps(data_dashboard, ensure_ascii=False)
+            data_pribadi['data'] = data_json
 
-        query = '''
-            INSERT INTO data_pribadi (nim, nama, tempat_lahir, tanggal_lahir, alamat,
+            # Tambahkan tanggal scrape
+            data_pribadi['tgl_scrape'] = datetime.now()
+
+            query = '''
+                INSERT INTO data_pribadi (nim, nama, tempat_lahir, tanggal_lahir, alamat,
                     kelurahan, kecamatan, kota, kode_pos, telepon,
                     email, jenis_kelamin, agama, program_studi, tahun_masuk, pilihan_waktu,
                     lokasi_cabang, kelas, lokal, semester_aktif, kondisi_aktif, kondisi_biaya_kuliah, data, tgl_scrape)
-            VALUES (:nim, :nama, :tempat_lahir, :tanggal_lahir, :alamat, :kelurahan,
+                VALUES (:nim, :nama, :tempat_lahir, :tanggal_lahir, :alamat, :kelurahan,
                     :kecamatan, :kota, :kode_pos, :telepon, :email, :jenis_kelamin, :agama,
                     :program_studi, :tahun_masuk, :pilihan_waktu, :lokasi_cabang, :kelas,
                     :lokal, :semester_aktif, :kondisi_aktif, :kondisi_biaya_kuliah, :data, :tgl_scrape)
-        '''
-        execute_query(query, data_pribadi)
+            '''
+            execute_query(query, data_pribadi)
+            print(f"Data untuk NIM {data_pribadi['nim']} berhasil disimpan.")
+
+        # Hapus user_id dari failedlogin jika ada
+        delete_from_failed_login(user_id) 
 
     except requests.exceptions.RequestException as e:
         print(f"An error occurred: {e}")
+
+def delete_from_failed_login(user_id):
+    """
+    Menghapus user_id dari tabel failedlogin.
+    """
+    try:
+        connection = sqlite3.connect(DATABASE)
+        cursor = connection.cursor()
+        cursor.execute("DELETE FROM failedlogin WHERE userID = ?", (user_id,))
+        connection.commit()
+        print(f"User ID {user_id} dihapus dari failedlogin.")
+    except sqlite3.Error as e:
+        print(f"Error: {e}")
+    finally:
+        connection.close()
 
 def insert_failed_login(user_id, min_date, max_date):
     """
@@ -472,7 +530,7 @@ def insert_failed_login(user_id, min_date, max_date):
     Jika NIM sudah ada, update tanggal awal dan akhir.
     """
     try:
-        connection = sqlite3.connect('data_pribadi.db')
+        connection = sqlite3.connect(DATABASE)
         cursor = connection.cursor()
 
         print(min_date, max_date)
@@ -513,7 +571,7 @@ def get_last_nim(table_name):
     Mendapatkan NIM terakhir (sebagai integer) dari tabel yang ditentukan.
     """
     try:
-        connection = sqlite3.connect('data_pribadi.db')
+        connection = sqlite3.connect(DATABASE)
         cursor = connection.cursor()
 
         if table_name == "failedlogin":
@@ -535,7 +593,7 @@ def get_failed_nim_range():
     Mendapatkan range NIM yang gagal dari tabel failedlogin.
     """
     try:
-        connection = sqlite3.connect('data_pribadi.db')
+        connection = sqlite3.connect(DATABASE)
         cursor = connection.cursor()
 
         cursor.execute("SELECT userID FROM failedlogin ORDER BY CAST(userID AS INTEGER)")
@@ -551,9 +609,9 @@ def get_failed_nim_range():
 if __name__ == '__main__':
     create_database()
     generate_random_cookie()
-    min_date = "2004-01-01"
-    max_date = "2005-12-12"
-    date_range = generate_date_range(min_date, max_date, "tanggal_output.txt")
+    min_date = "2001-01-01"
+    max_date = "2003-12-30"
+    date_range = generate_date_range(min_date, max_date, TGL_OUTPUT)
     if isinstance(date_range, list):
         print(f"Tanggal berhasil disimpan ke tanggal_output.txt")
     else:
@@ -576,9 +634,9 @@ if __name__ == '__main__':
         last_nim_data_pribadi = get_last_nim("data_pribadi")
         last_nim_failedlogin = get_last_nim("failedlogin")
         start_nim = max(last_nim_data_pribadi, last_nim_failedlogin) + 1
-        nim_list = range(start_nim, 99999999999) # Ganti 99999999999 dengan batas atas yang diinginkan
+        nim_list = range(start_nim, 15230709) # Ganti 99999999999 dengan batas atas yang diinginkan
     elif option == '3':
-        nim_list = range(15230711, 99999999999) # Ganti range sesuai kebutuhan
+        nim_list = range(15230200, 15230300) # Ganti range sesuai kebutuhan
     else:
         print("Opsi tidak valid.")
         exit()
