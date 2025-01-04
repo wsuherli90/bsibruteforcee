@@ -45,7 +45,7 @@ TGL_OUTPUT = 'tanggal_output.txt'
 
 
 
-""" Arsitektur ini berdiri secara independen bekerja secara berurutan , sebaiknya anda kembangkan arsitektur ini supaya berjalan bersamaan  """
+""" Arsitektur ini berdiri secara independen bekerja secara berurutan , dan sedang di kembangkan untuk lebih baik """
 
 def create_database():
     """
