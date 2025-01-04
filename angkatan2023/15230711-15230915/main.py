@@ -2,7 +2,21 @@
 """
 version 1.0 - 13-12-2024
 
-Script ini digunakan untuk melakukan bruteforce website siakad, anda harus mencari prefix NIM tersebut
+Script ini digunakan untuk melakukan bruteforce website siakad,
+dan juga Script ini dalam proses pengembangan algortima bruteforce lebih baik lagi dengan melakukan scraping dari PDDkti sebelum 
+melakukan post ke website tersebut, 
+Sebelum anda menggunakan Script ini pastikan anda harus memahami NIM UBSi 
+Hint : 
+Informatika 
+Angkatan 2019 - Unknowing (Jika anda tau maka tambahakan sendiri)
+Angkatan 2020 - 15200001 - 15200915 Index Tahun : 1998-2002
+Angkatan 2021 - 15210001 - 15210915 Index Tahun : 1999 -2003
+Angkatan 2022 - 15220001 - 15220915 Index Tahun : 2000 - 2004
+Ankatan 2023  - 15230001 - 15220915 Index Tahun : 2001 - 2005 
+Angkatan 2024 - 15240001 - 15240915 Index Tahun : 2002 - 2006 
+
+Note : Index dan Nim ini mungkin tidak valid dan mungkin dapat terjadi kesalahan oleh karena itu sebaiknya anda dapat menangani kesalahan sendiri
+melalui cek Nim di PDDikti dan juga Tahun Lahir yang tepat, semua kegagalan login akan ditambahkan pada tabel failed_login.
 
 
 
@@ -31,7 +45,7 @@ TGL_OUTPUT = 'tanggal_output.txt'
 
 
 
-""" Arsitektur ini berdiri secara independen bekerja secara berurutan . """
+""" Arsitektur ini berdiri secara independen bekerja secara berurutan , sebaiknya anda kembangkan arsitektur ini supaya berjalan bersamaan  """
 
 def create_database():
     """
@@ -656,14 +670,21 @@ if __name__ == '__main__':
     option = input("Masukkan pilihan (1/2/3): ")
 
     if option == '1':
+        """ Opsi ini akan mengambil nim yang gagal dari database anda harus mendefinisikan 
+        tanggal lahir sebelum melanjutkan """
         nim_list = get_failed_nim_range()
     elif option == '2':
+        """ Opsi ini akan mengambil dari row terakhir dari setiap tabel datapribadi dan failed login dan membandingkan mana yang paling terakhir
+         dan melanjutkan"""
         last_nim_data_pribadi = get_last_nim("data_pribadi")
         last_nim_failedlogin = get_last_nim("failedlogin")
         start_nim = max(last_nim_data_pribadi, last_nim_failedlogin) + 1
-        nim_list = range(start_nim, 15230915) # Ganti 99999999999 dengan batas atas yang diinginkan
+        nim_list = range(start_nim, 15230915) 
     elif option == '3':
-        nim_list = range(15230200, 15230915) # Ganti range sesuai kebutuhan
+        """ Script ini di defnisikan dari nim pertama hingga max nim terakhir yang berasal dari script
+        misalkan anda mendefiniskan nim 15230711-15230915 maka anda harus mendefinisikan disini untuk pertama kali script dijalankan
+        """
+        nim_list = range(15230200, 15230915) 
     else:
         print("Opsi tidak valid.")
         exit()
